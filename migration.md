@@ -1,11 +1,115 @@
 ## Phase 1 — Inventory \& Audit
 
 - [ ] Document current partition layout: `lsblk -o NAME,FSTYPE,SIZE,MOUNTPOINT,UUID`
-- [ ] Note all SATA SSD mount points and UUIDs — you will need these for the new `/etc/fstab`
+NAME   FSTYPE   SIZE MOUNTPOINT UUID
+sda           931.5G            
+├─sda1 vfat     300M /boot/efi  2CBC-CD5D
+├─sda2 btrfs  922.4G /srv       9f31942d-3f98-400b-83f4-3c0bb1c7309b
+└─sda3 swap     8.8G [SWAP]     5ca1dae4-c551-436d-a6dd-b985c8b59e37
+sdb             7.3T            
+└─sdb1 btrfs    7.3T /data      a520d5ae-8150-4e88-8837-f0ca9d643b2b
+zram0  swap     7.6G [SWAP]     5c8f2ca3-b2b3-4786-8691-89159765589b
+
 - [ ] List all running services: `systemctl list-units --type=service --state=running`
+
+  UNIT                               LOAD   ACTIVE SUB     DESCRIPTION                                                        
+  avahi-daemon.service               loaded active running Avahi mDNS/DNS-SD Stack
+  caddy.service                      loaded active running Caddy web server
+  containerd.service                 loaded active running containerd container runtime
+  dbus-broker.service       UNIT FILE                             STATE   PRESET  
+grub-btrfs-snapper.path               enabled disabled
+avahi-daemon.service                  enabled disabled
+bluetooth.service                     enabled disabled
+caddy.service                         enabled disabled
+docker.service                        enabled disabled
+fail2ban.service                      enabled disabled
+garuda-pacman-lock.service            enabled disabled
+garuda-pacman-snapshot-reject.service enabled disabled
+getty@.service                        enabled enabled 
+kodi-gbm.service                      enabled disabled
+libvirtd.service                      enabled disabled
+linux-modules-cleanup.service         enabled disabled
+NetworkManager-dispatcher.service     enabled disabled
+NetworkManager-wait-online.service    enabled disabled
+NetworkManager.service                enabled disabled
+sshd.service                          enabled disabled
+systemd-oomd.service                  enabled disabled
+systemd-resolved.service              enabled enabled 
+systemd-timesyncd.service             enabled enabled 
+avahi-daemon.socket                   enabled disabled
+libvirtd-admin.socket                 enabled disabled
+libvirtd-ro.socket                    enabled disabled
+libvirtd.socket                       enabled disabled
+systemd-journal-gatewayd.socket       enabled disabled
+virtlockd-admin.socket                enabled disabled
+virtlockd.socket                      enabled disabled
+virtlogd-admin.socket                 enabled disabled
+virtlogd.socket                       enabled disabled
+remote-fs.target                      enabled enabled 
+btrfs-balance.timer                   enabled disabled
+btrfs-defrag.timer                    enabled disabled
+btrfs-scrub.timer                     enabled disabled
+btrfs-trim.timer                      enabled disabled
+snapper-cleanup.timer                 enabled disabled
+         loaded active running D-Bus System Message Bus
+  dirmngr@etc-pacman.d-gnupg.service loaded active running GnuPG network certificate management daemon for /etc/pacman.d/gnupg
+  docker.service                     loaded active running Docker Application Container Engine
+  fail2ban.service                   loaded active running Fail2Ban Service
+  kodi-gbm.service                   loaded active running Kodi standalone (GBM)
+  libvirtd.service                   loaded active running libvirt legacy monolithic daemon
+  NetworkManager.service             loaded active running Network Manager
+  polkit.service                     loaded active running Authorization Manager
+  sshd.service                       loaded active running OpenSSH Daemon
+  syncthing@kodi.service             loaded active running Syncthing - Open Source Continuous File Synchronization for kodi
+  systemd-journald.service           loaded active running Journal Service
+  systemd-logind.service             loaded active running User Login Management
+  systemd-machined.service           loaded active running Virtual Machine and Container Registration Service
+  systemd-oomd.service               loaded active running Userspace Out-Of-Memory (OOM) Killer
+  systemd-resolved.service           loaded active running Network Name Resolution
+  systemd-timesyncd.service          loaded active running Network Time Synchronization
+  systemd-udevd.service              loaded active running Rule-based Manager for Device Events and Files
+  udisks2.service                    loaded active running Disk Manager
+  user@1000.service                  loaded active running User Manager for UID 1000
+  virtlogd.service                   loaded active running libvirt logging daemon
+
+
 - [ ] List all enabled services: `systemctl list-unit-files --state=enabled`
-- [ ] Export explicitly installed packages: `pacman -Qqe > ~/pkglist.txt` (separate AUR: `pacman -Qqem > ~/pkglist-aur.txt`)[^1_1]
-- [ ] Note AUR helper in use (e.g. `yay`, `paru`) and its version
+
+UNIT FILE                             STATE   PRESET  
+grub-btrfs-snapper.path               enabled disabled
+avahi-daemon.service                  enabled disabled
+bluetooth.service                     enabled disabled
+caddy.service                         enabled disabled
+docker.service                        enabled disabled
+fail2ban.service                      enabled disabled
+garuda-pacman-lock.service            enabled disabled
+garuda-pacman-snapshot-reject.service enabled disabled
+getty@.service                        enabled enabled 
+kodi-gbm.service                      enabled disabled
+libvirtd.service                      enabled disabled
+linux-modules-cleanup.service         enabled disabled
+NetworkManager-dispatcher.service     enabled disabled
+NetworkManager-wait-online.service    enabled disabled
+NetworkManager.service                enabled disabled
+sshd.service                          enabled disabled
+systemd-oomd.service                  enabled disabled
+systemd-resolved.service              enabled enabled 
+systemd-timesyncd.service             enabled enabled 
+avahi-daemon.socket                   enabled disabled
+libvirtd-admin.socket                 enabled disabled
+libvirtd-ro.socket                    enabled disabled
+libvirtd.socket                       enabled disabled
+systemd-journal-gatewayd.socket       enabled disabled
+virtlockd-admin.socket                enabled disabled
+virtlockd.socket                      enabled disabled
+virtlogd-admin.socket                 enabled disabled
+virtlogd.socket                       enabled disabled
+remote-fs.target                      enabled enabled 
+btrfs-balance.timer                   enabled disabled
+btrfs-defrag.timer                    enabled disabled
+btrfs-scrub.timer                     enabled disabled
+btrfs-trim.timer                      enabled disabled
+snapper-cleanup.timer                 enabled disabled
 
 ***
 
@@ -16,10 +120,6 @@ Back everything up to the **SATA SSD** or an external device, never to the M.2 y
 - [ ] Backup `/etc` in full: `sudo rsync -aAXv /etc/ /mnt/sata/backup/etc/`
 - [ ] Backup home directories: `sudo rsync -aAXv /home/ /mnt/sata/backup/home/`
 - [ ] Backup `/root` (root user configs/scripts): `sudo rsync -aAXv /root/ /mnt/sata/backup/root/`
-- [ ] Backup crontabs: `crontab -l > ~/backup/crontab.txt`; also check `/etc/cron.d/` and `/var/spool/cron/`
-- [ ] Backup SSH host keys and authorized_keys: `sudo cp -r /etc/ssh/ /mnt/sata/backup/ssh/`
-- [ ] Backup SSL/TLS certificates if self-managed (e.g. `/etc/letsencrypt/`)
-- [ ] Backup any custom kernel parameters: `cat /etc/sysctl.d/*`
 
 ***
 
